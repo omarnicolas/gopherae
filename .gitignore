@@ -1,6 +1,9 @@
 # Created by https://www.gitignore.io/api/go,linux,macos,windows,intellij,webstorm,visualstudiocode
 # Edit at https://www.gitignore.io/?templates=go,linux,macos,windows,intellij,webstorm,visualstudiocode
 
+### Sample Data ###
+/pkg/storage/data
+
 ### Go ###
 # Binaries for programs and plugins
 *.exe
