@@ -1,44 +1,27 @@
-package json
+package mysql
 
 import (
-	"encoding/json"
-	"fmt"
-	"path"
-	"runtime"
-	"strconv"
+	"database/sql"
 	"time"
 
-	scribble "github.com/nanobox-io/golang-scribble"
+	_ "github.com/go-sql-driver/mysql"
 	"github.com/omarnicolas/gopherae/pkg/adding"
 	"github.com/omarnicolas/gopherae/pkg/listing"
 	"github.com/omarnicolas/gopherae/pkg/reviewing"
 )
 
-const (
-	// dir defines the name of the directory where the files are stored
-	dir = "/data/"
-
-	// CollectionGopher identifier for the JSON collection of gophers
-	CollectionGopher = "gophers"
-	// CollectionReview identifier for the JSON collection of reviews
-	CollectionReview = "reviews"
-)
-
-// Storage stores gopher data in JSON files
+// Storage stores gopher data
 type Storage struct {
-	db *scribble.Driver
+	db *sql.DB
 }
 
-// NewStorage returns a new JSON storage
-func NewStorage() (*Storage, error) {
+// NewStorage returns a new mysql connection
+func NewConnection() (*Storage, error) {
 	var err error
 
 	s := new(Storage)
 
-	_, filename, _, _ := runtime.Caller(0)
-	p := path.Dir(filename)
-
-	s.db, err = scribble.New(p+dir, nil)
+	s.db, err = sql.Open("mysql", "root:root@tcp(localhost:3306)/db?parseTime=true") // environment variables; hardcoded here for simplicity
 	if err != nil {
 		return nil, err
 	}
@@ -46,7 +29,7 @@ func NewStorage() (*Storage, error) {
 	return s, nil
 }
 
-// AddGopher saves the given gopher to the repository
+// AddGopher saves the given gopher to the db
 func (s *Storage) AddGopher(g adding.Gopher) error {
 
 	existingGophers := s.GetAllGophers()
@@ -57,39 +40,51 @@ func (s *Storage) AddGopher(g adding.Gopher) error {
 	}
 
 	newG := Gopher{
-		ID:        len(existingGophers) + 1,
-		Created:   time.Now(),
 		Name:      g.Name,
 		ShortDesc: g.ShortDesc,
+		Created:   time.Now(),
 	}
 
-	resource := strconv.Itoa(newG.ID)
-	if err := s.db.Write(CollectionGopher, resource, newG); err != nil {
+	stmt, err := s.db.Prepare("INSERT gopher SET name=?, short_description=?, created=?")
+	if err != nil {
 		return err
 	}
+	defer stmt.Close()
+
+	_, err = stmt.Exec(newG.Name, newG.ShortDesc, newG.Created)
+	if err != nil {
+		return err
+	}
+
 	return nil
 }
 
 // AddReview saves the given review in the repository
 func (s *Storage) AddReview(r reviewing.Review) error {
+	var g Gopher
 
-	var gopher Gopher
-	if err := s.db.Read(CollectionGopher, strconv.Itoa(r.GopherID), &gopher); err != nil {
+	row := s.db.QueryRow("SELECT id, name, short_description, created FROM gopher WHERE id=?", r.GopherID)
+	if err := row.Scan(&g.ID, &g.Name, &g.ShortDesc, &g.Created); err != nil {
 		return listing.ErrNotFound
 	}
 
-	created := time.Now()
 	newR := Review{
-		ID:        fmt.Sprintf("%d_%s_%s_%d", r.GopherID, r.FirstName, r.LastName, created.Unix()),
-		Created:   created,
 		GopherID:  r.GopherID,
 		FirstName: r.FirstName,
 		LastName:  r.LastName,
 		Score:     r.Score,
 		Text:      r.Text,
+		Created:   time.Now(),
 	}
 
-	if err := s.db.Write(CollectionReview, newR.ID, r); err != nil {
+	stmt, err := s.db.Prepare("INSERT review SET gopher_id=?, first_name=?, last_name=?, score=?, text=?, created=?")
+	if err != nil {
+		return err
+	}
+	defer stmt.Close()
+
+	_, err = stmt.Exec(newR.GopherID, newR.FirstName, newR.LastName, newR.Score, newR.Text, newR.Created)
+	if err != nil {
 		return err
 	}
 
@@ -101,10 +96,9 @@ func (s *Storage) GetGopher(id int) (listing.Gopher, error) {
 	var g Gopher
 	var gopher listing.Gopher
 
-	var resource = strconv.Itoa(id)
+	row := s.db.QueryRow("SELECT id, name, short_description, created FROM gopher WHERE id=?", id)
 
-	if err := s.db.Read(CollectionGopher, resource, &g); err != nil {
-		// err handling omitted for simplicity
+	if err := row.Scan(&g.ID, &g.Name, &g.ShortDesc, &g.Created); err != nil {
 		return gopher, listing.ErrNotFound
 	}
 
@@ -120,18 +114,18 @@ func (s *Storage) GetGopher(id int) (listing.Gopher, error) {
 func (s *Storage) GetAllGophers() []listing.Gopher {
 	list := []listing.Gopher{}
 
-	records, err := s.db.ReadAll(CollectionGopher)
+	rows, err := s.db.Query("SELECT id, name, short_description, created FROM gopher")
 	if err != nil {
 		// err handling omitted for simplicity
 		return list
 	}
+	defer rows.Close()
 
-	for _, r := range records {
+	for rows.Next() {
 		var g Gopher
 		var gopher listing.Gopher
 
-		if err := json.Unmarshal([]byte(r), &g); err != nil {
-			// err handling omitted for simplicity
+		if err := rows.Scan(&g.ID, &g.Name, &g.ShortDesc, &g.Created); err != nil {
 			return list
 		}
 
@@ -150,17 +144,17 @@ func (s *Storage) GetAllGophers() []listing.Gopher {
 func (s *Storage) GetAllReviews(gopherID int) []listing.Review {
 	list := []listing.Review{}
 
-	records, err := s.db.ReadAll(CollectionReview)
+	rows, err := s.db.Query("SELECT id, gopher_id, first_name, last_name, score, text, created FROM review")
 	if err != nil {
 		// err handling omitted for simplicity
 		return list
 	}
+	defer rows.Close()
 
-	for _, g := range records {
+	for rows.Next() {
 		var r Review
 
-		if err := json.Unmarshal([]byte(g), &r); err != nil {
-			// err handling omitted for simplicity
+		if err := rows.Scan(&r.ID, &r.GopherID, &r.FirstName, &r.LastName, &r.Score, &r.Text, &r.Created); err != nil {
 			return list
 		}
 

@@ -2,6 +2,12 @@
 
 
 [[projects]]
+  name = "github.com/go-sql-driver/mysql"
+  packages = ["."]
+  revision = "72cd26f257d44c1114970e19afddcd812016007e"
+  version = "v1.4.1"
+
+[[projects]]
   branch = "master"
   name = "github.com/jcelliott/lumber"
   packages = ["."]
@@ -19,9 +25,15 @@
   packages = ["."]
   revision = "aa3e7c118975babb5ab3bc2a221b9d5a420b625b"
 
+[[projects]]
+  name = "google.golang.org/appengine"
+  packages = ["cloudsql"]
+  revision = "54a98f90d1c46b7731eb8fb305d2a321c30ef610"
+  version = "v1.5.0"
+
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "d2b53ebcadfb99f2beddf2efa8293f704ae8a7d787a464f3e6d5ba24500e5ff3"
+  inputs-digest = "9b027404b4fa6f9d73c321b04b8631e8e49fc5a8304f7028764f5855bbb4935c"
   solver-name = "gps-cdcl"
   solver-version = 1

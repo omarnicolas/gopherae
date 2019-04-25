@@ -29,21 +29,21 @@ func NewService(r Repository) Service {
 }
 
 // AddGopher adds the given gopher(s) to the database
-func (s *service) AddGopher(b ...Gopher) {
+func (s *service) AddGopher(g ...Gopher) {
 
 	// any validation can be done here
 
-	for _, gopher := range b {
+	for _, gopher := range g {
 		_ = s.bR.AddGopher(gopher) // error handling omitted for simplicity
 	}
 }
 
 // AddSampleGophers adds some sample gophers to the database
-func (s *service) AddSampleGophers(b []Gopher) {
+func (s *service) AddSampleGophers(g []Gopher) {
 
 	// any validation can be done here
 
-	for _, bb := range b {
-		_ = s.bR.AddGopher(bb) // error handling omitted for simplicity
+	for _, gg := range g {
+		_ = s.bR.AddGopher(gg) // error handling omitted for simplicity
 	}
 }

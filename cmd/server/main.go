@@ -11,6 +11,7 @@ import (
 	"github.com/omarnicolas/gopherae/pkg/reviewing"
 	"github.com/omarnicolas/gopherae/pkg/storage/json"
 	"github.com/omarnicolas/gopherae/pkg/storage/memory"
+	"github.com/omarnicolas/gopherae/pkg/storage/mysql"
 )
 
 // StorageType defines available storage types
@@ -21,12 +22,14 @@ const (
 	JSON Type = iota
 	// Memory will store data in memory
 	Memory
+	// MySQL will store data in DB
+	MySQL
 )
 
 func main() {
 
 	// set up storage
-	storageType := JSON // this could be a flag; hardcoded here for simplicity
+	storageType := MySQL // this could be a flag; hardcoded here for simplicity
 
 	var adder adding.Service
 	var lister listing.Service
@@ -43,6 +46,14 @@ func main() {
 	case JSON:
 		// error handling omitted for simplicity
 		s, _ := json.NewStorage()
+
+		adder = adding.NewService(s)
+		lister = listing.NewService(s)
+		reviewer = reviewing.NewService(s)
+
+	case MySQL:
+		// error handling omitted for simplicity
+		s, _ := mysql.NewConnection()
 
 		adder = adding.NewService(s)
 		lister = listing.NewService(s)
