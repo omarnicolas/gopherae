@@ -2,9 +2,12 @@ package mysql
 
 import (
 	"database/sql"
+	"fmt"
+	"os"
 	"time"
 
 	_ "github.com/go-sql-driver/mysql"
+	"github.com/joho/godotenv"
 	"github.com/omarnicolas/gopherae/pkg/adding"
 	"github.com/omarnicolas/gopherae/pkg/listing"
 	"github.com/omarnicolas/gopherae/pkg/reviewing"
@@ -19,9 +22,20 @@ type Storage struct {
 func NewConnection() (*Storage, error) {
 	var err error
 
-	s := new(Storage)
+	e := godotenv.Load() //Load .env file
+	if e != nil {
+		fmt.Print(e)
+	}
 
-	s.db, err = sql.Open("mysql", "root:root@tcp(localhost:3306)/db?parseTime=true") // environment variables; hardcoded here for simplicity
+	dbHost := os.Getenv("DB_HOST")
+	dbName := os.Getenv("DB_NAME")
+	dbUser := os.Getenv("DB_USER")
+	dbPass := os.Getenv("DB_PASS")
+
+	s := new(Storage)
+	dbSource := fmt.Sprintf("%s:%s@%s/%s?parseTime=true", dbUser, dbPass, dbHost, dbName)
+
+	s.db, err = sql.Open("mysql", dbSource)
 	if err != nil {
 		return nil, err
 	}
